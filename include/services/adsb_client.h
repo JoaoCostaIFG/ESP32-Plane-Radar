@@ -34,6 +34,13 @@ void setPollFn(PollFn fn);
 bool fetchUpdate(double center_lat, double center_lon, float fetch_radius_km);
 
 /**
+ * Copy up to max_points recent trail positions for hex into lats/lons,
+ * oldest first. Returns the number of points written (0 when none).
+ */
+size_t trailPointsFor(const char* hex, float* lats, float* lons,
+                      size_t max_points);
+
+/**
  * Look up one uncached aircraft through ADSBDB. Results are rate-limited and
  * cached. Returns true when a visible route or type changed.
  */

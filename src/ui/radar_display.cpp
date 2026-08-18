@@ -329,6 +329,44 @@ void drawBeyondRingDot(int x, int y) {
                            radar::kColorAircraft);
 }
 
+/** Trail dots behind an aircraft: older points shrink and fade. */
+constexpr int kTrailDotRadiusPx = 2;
+constexpr float kTrailFadeStep = 0.11f;
+
+void drawTrail(const services::adsb::Aircraft& plane) {
+  constexpr size_t kMaxTrail = 8;
+  float lats[kMaxTrail];
+  float lons[kMaxTrail];
+  const size_t n = services::adsb::trailPointsFor(plane.hex, lats, lons,
+                                                  kMaxTrail);
+  if (n == 0) {
+    return;
+  }
+
+  uint16_t faded;
+  const uint16_t r5 = (radar::kColorAircraft >> 11) & 0x1F;
+  const uint16_t g6 = (radar::kColorAircraft >> 5) & 0x3F;
+  const uint16_t b5 = radar::kColorAircraft & 0x1F;
+  for (size_t i = 0; i < n; ++i) {
+    const float fade =
+        1.0f - kTrailFadeStep * static_cast<float>(n - 1 - i);
+    if (fade <= 0.15f) {
+      continue;
+    }
+    int x = 0;
+    int y = 0;
+    latLonToScreen(lats[i], lons[i], &x, &y);
+    if (!isInsideOuterRing(x, y)) {
+      continue;
+    }
+    faded = static_cast<uint16_t>(
+        ((static_cast<uint16_t>(r5 * fade)) << 11) |
+        ((static_cast<uint16_t>(g6 * fade)) << 5) |
+        static_cast<uint16_t>(b5 * fade));
+    s_draw->fillSmoothCircle(x, y, kTrailDotRadiusPx, faded);
+  }
+}
+
 void clipPointToOuterRing(int x0, int y0, int* x1, int* y1) {
   const int max_r = radar::kGridOuterRadius;
   const int max_r_sq = max_r * max_r;
@@ -706,6 +744,7 @@ void drawAircraft() {
     const size_t i = items[d].index;
     const int x = items[d].x;
     const int y = items[d].y;
+    drawTrail(planes[i]);
     drawSpeedVector(x, y, planes[i].nose_deg, planes[i].track_deg,
                     planes[i].gs_knots, radar::kColorTrackVector);
     drawHeadingTriangle(x, y, planes[i].nose_deg, radar::kColorAircraft);

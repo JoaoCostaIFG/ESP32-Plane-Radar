@@ -21,6 +21,22 @@ constexpr int kConnectAttemptMs = 200;
 constexpr unsigned long kAdsbRequestTimeoutMs = 10000;
 constexpr size_t kEnrichmentCacheSize = 48;
 
+/** Positions remembered per aircraft for trail rendering. */
+constexpr size_t kTrailPoints = 8;
+constexpr unsigned long kTrailMinStepMs = 4000;
+constexpr unsigned long kTrailForgetMs = 120000;
+
+struct TrailHistory {
+  char hex[7] = {};
+  unsigned long updated_ms = 0;
+  size_t count = 0;
+  size_t head = 0;
+  float lats[kTrailPoints] = {};
+  float lons[kTrailPoints] = {};
+};
+
+TrailHistory s_trails[kMaxAircraft];
+
 Aircraft s_aircraft[kMaxAircraft];
 size_t s_aircraft_count = 0;
 PollFn s_poll_fn = nullptr;
@@ -526,9 +542,102 @@ void applyCachedEnrichment(Aircraft* plane) {
   }
 }
 
+TrailHistory* trailSlotFor(const Aircraft& plane, unsigned long now) {
+  TrailHistory* free_slot = nullptr;
+  TrailHistory* stale_slot = nullptr;
+  unsigned long stale_age = 0;
+  for (auto& trail : s_trails) {
+    if (trail.hex[0] == '\0') {
+      if (free_slot == nullptr) {
+        free_slot = &trail;
+      }
+      continue;
+    }
+    if (strcmp(trail.hex, plane.hex) == 0) {
+      if (now - trail.updated_ms > kTrailForgetMs) {
+        trail.count = 0;
+        trail.head = 0;
+      }
+      return &trail;
+    }
+    const unsigned long age = now - trail.updated_ms;
+    if (age > kTrailForgetMs && age > stale_age) {
+      stale_slot = &trail;
+      stale_age = age;
+    }
+  }
+  if (stale_slot != nullptr) {
+    stale_slot->hex[0] = '\0';
+    stale_slot->count = 0;
+    stale_slot->head = 0;
+    return stale_slot;
+  }
+  if (free_slot != nullptr) {
+    strncpy(free_slot->hex, plane.hex, sizeof(free_slot->hex) - 1);
+    free_slot->hex[sizeof(free_slot->hex) - 1] = '\0';
+    return free_slot;
+  }
+  return nullptr;
+}
+
+void recordTrailPoint(Aircraft* plane, const JsonObject& json) {
+  if (plane->hex[0] == '\0') {
+    return;
+  }
+  float lat = 0.0f;
+  float lon = 0.0f;
+  if (!readJsonFloat(json, "lat", &lat) || !readJsonFloat(json, "lon", &lon)) {
+    return;
+  }
+
+  const unsigned long now = millis();
+  TrailHistory* trail = trailSlotFor(*plane, now);
+  if (trail == nullptr) {
+    return;
+  }
+
+  if (trail->count > 0 && now - trail->updated_ms < kTrailMinStepMs) {
+    return;
+  }
+
+  trail->lats[trail->head] = plane->lat;
+  trail->lons[trail->head] = plane->lon;
+  trail->head = (trail->head + 1) % kTrailPoints;
+  if (trail->count < kTrailPoints) {
+    ++trail->count;
+  }
+  trail->updated_ms = now;
+}
+
 }  // namespace
 
 void setPollFn(PollFn fn) { s_poll_fn = fn; }
+
+size_t trailPointsFor(const char* hex, float* lats, float* lons,
+                      size_t max_points) {
+  if (hex == nullptr || hex[0] == '\0') {
+    return 0;
+  }
+  const unsigned long now = millis();
+  for (const auto& trail : s_trails) {
+    if (trail.hex[0] == '\0' || strcmp(trail.hex, hex) != 0) {
+      continue;
+    }
+    if (now - trail.updated_ms > kTrailForgetMs || trail.count == 0) {
+      return 0;
+    }
+    size_t n = trail.count < max_points ? trail.count : max_points;
+    // Ring buffer: head marks the next write; oldest entry follows it.
+    size_t index = (trail.head + kTrailPoints - trail.count) % kTrailPoints;
+    for (size_t i = 0; i < n; ++i) {
+      lats[i] = trail.lats[index];
+      lons[i] = trail.lons[index];
+      index = (index + 1) % kTrailPoints;
+    }
+    return n;
+  }
+  return 0;
+}
 
 size_t aircraftCount() { return s_aircraft_count; }
 
@@ -603,6 +712,7 @@ bool fetchUpdate(double center_lat, double center_lon, float fetch_radius_km) {
     s_aircraft[n].gs_knots = pickGroundSpeed(plane);
     fillTagFields(&s_aircraft[n], plane);
     applyCachedEnrichment(&s_aircraft[n]);
+    recordTrailPoint(&s_aircraft[n], plane);
     ++n;
   }
 
