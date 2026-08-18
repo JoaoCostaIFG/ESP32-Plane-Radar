@@ -81,4 +81,9 @@ constexpr uint16_t kColorYellow = 0xFFE0;
 constexpr uint16_t kTextOnYellow = kColorBlack;
 constexpr uint16_t kTextOnBlack = 0xFFFF;
 
+// --- Night dimming (software palette scaling; BLK line is hardwired) ---
+/** Local-hour range treated as night: [start, 24) and [0, end). */
+constexpr int kNightDimStartHour = 22;
+constexpr int kNightDimEndHour = 7;
+
 }  // namespace config

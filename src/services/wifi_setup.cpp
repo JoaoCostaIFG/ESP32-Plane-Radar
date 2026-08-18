@@ -127,6 +127,26 @@ WiFiManagerParameter s_param_text_scale_output(
     "o=document.getElementById('text_scale_value');"
     "if(s&&o)o.value=s.value+'%';})();</script>");
 
+char s_night_dim_checkbox_attrs[32] = "type=\"checkbox\"";
+WiFiManagerParameter s_param_night_dim(
+    "night_dim", "Dim display at night (22:00-07:00)", "T", 2,
+    s_night_dim_checkbox_attrs, WFM_LABEL_AFTER);
+
+constexpr int kNightBrightParamLen = 4;
+constexpr char kNightBrightAttrs[] =
+    "type=\"range\" min=\"10\" max=\"100\" step=\"5\" "
+    "oninput=\"document.getElementById('night_bright_value').value="
+    "this.value+'%'\"";
+WiFiManagerParameter s_param_night_bright(
+    "night_bright", "Night brightness", "40", kNightBrightParamLen,
+    kNightBrightAttrs);
+WiFiManagerParameter s_param_night_bright_output(
+    "<div style=\"text-align:center;margin-top:-5px\">"
+    "<output id=\"night_bright_value\" for=\"night_bright\"></output></div>"
+    "<script>(function(){var s=document.getElementById('night_bright'),"
+    "o=document.getElementById('night_bright_value');"
+    "if(s&&o)o.value=s.value+'%';})();</script>");
+
 constexpr char kOtaPasswordAttrs[] =
     "type=\"password\" autocomplete=\"new-password\" "
     "placeholder=\"leave blank to keep current\"";
@@ -174,6 +194,14 @@ void refreshPortalParamDefaults() {
   snprintf(text_scale_buf, sizeof(text_scale_buf), "%d",
            services::settings::textScalePercent());
   s_param_text_scale.setValue(text_scale_buf, kTextScaleParamLen);
+  refreshCheckboxAttrs(s_night_dim_checkbox_attrs,
+                       sizeof(s_night_dim_checkbox_attrs),
+                       services::settings::nightDimEnabled());
+  s_param_night_dim.setValue("T", 2);
+  char night_bright_buf[kNightBrightParamLen + 1];
+  snprintf(night_bright_buf, sizeof(night_bright_buf), "%d",
+           services::settings::nightBrightnessPercent());
+  s_param_night_bright.setValue(night_bright_buf, kNightBrightParamLen);
   s_param_ota_password.setValue("", kOtaPasswordParamLen);
 }
 
@@ -187,8 +215,8 @@ void onPortalParamsSaved() {
   services::settings::saveFromPortal(
       s_param_footer.getValue(), s_param_weather.getValue(),
       s_param_fahrenheit.getValue(), s_param_clock24.getValue(),
-      s_param_text_scale.getValue(),
-      s_param_ota_password.getValue());
+      s_param_text_scale.getValue(), s_param_ota_password.getValue(),
+      s_param_night_dim.getValue(), s_param_night_bright.getValue());
 }
 
 void savePortalParamsFromRequest(WebServer& web) {
@@ -201,6 +229,8 @@ void savePortalParamsFromRequest(WebServer& web) {
   const String fahrenheit = web.arg("temp_f");
   const String clock24 = web.arg("clock_24");
   const String text_scale = web.arg("text_scale");
+  const String night_dim = web.arg("night_dim");
+  const String night_bright = web.arg("night_bright");
   const String ota_password = web.arg("ota_password");
 
   if (!services::location::saveFromStrings(latitude.c_str(),
@@ -211,7 +241,8 @@ void savePortalParamsFromRequest(WebServer& web) {
   ui::radar::saveRunwaysFromPortal(runways.c_str());
   services::settings::saveFromPortal(
       footer.c_str(), weather.c_str(), fahrenheit.c_str(), clock24.c_str(),
-      text_scale.c_str(), ota_password.c_str());
+      text_scale.c_str(), ota_password.c_str(), night_dim.c_str(),
+      night_bright.c_str());
   refreshPortalParamDefaults();
 }
 
@@ -260,6 +291,9 @@ void attachPortalParams(WiFiManager& wm) {
   wm.addParameter(&s_param_after_clock_break);
   wm.addParameter(&s_param_text_scale);
   wm.addParameter(&s_param_text_scale_output);
+  wm.addParameter(&s_param_night_dim);
+  wm.addParameter(&s_param_night_bright);
+  wm.addParameter(&s_param_night_bright_output);
   wm.addParameter(&s_param_ota_password);
   wm.setSaveParamsCallback(onPortalParamsSaved);
 }

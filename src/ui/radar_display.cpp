@@ -202,30 +202,58 @@ void initFooterMetrics() {
 }
 
 void initPalette() {
-  radar::kColorBackground = tft.color565(radar::kBgR, radar::kBgG, radar::kBgB);
-  radar::kColorGrid = tft.color565(radar::kGridR, radar::kGridG, radar::kGridB);
-  radar::kColorLabel = tft.color565(255, 255, 255);
-  radar::kColorCenter = tft.color565(255, 255, 255);
+  // Night dimming scales the palette toward black (BLK line is hardwired on).
+  uint8_t dim = 255;
+  if (services::settings::nightDimEnabled()) {
+    const int hour = services::weather::localHour();
+    if (hour >= 0 && (hour >= config::kNightDimStartHour ||
+                      hour < config::kNightDimEndHour)) {
+      dim = static_cast<uint8_t>(255 *
+                                 services::settings::nightBrightnessPercent() /
+                                 100);
+    }
+  }
+  const auto dimmed = [dim](uint16_t color) {
+    if (dim >= 255) {
+      return color;
+    }
+    const uint16_t r5 = (color >> 11) & 0x1F;
+    const uint16_t g6 = (color >> 5) & 0x3F;
+    const uint16_t b5 = color & 0x1F;
+    return static_cast<uint16_t>(((r5 * dim) >> 8) << 11 |
+                                 ((g6 * dim) >> 8) << 5 | ((b5 * dim) >> 8));
+  };
+
+  radar::kColorBackground =
+      dimmed(tft.color565(radar::kBgR, radar::kBgG, radar::kBgB));
+  radar::kColorGrid =
+      dimmed(tft.color565(radar::kGridR, radar::kGridG, radar::kGridB));
+  radar::kColorLabel = dimmed(tft.color565(255, 255, 255));
+  radar::kColorCenter = dimmed(tft.color565(255, 255, 255));
   // GC9A01 BGR panel: swap R/B in color565 so logical red renders red on screen.
   if (config::kDisplayRgbOrder) {
     radar::kColorAircraft =
-        tft.color565(radar::kAircraftB, radar::kAircraftG, radar::kAircraftR);
+        dimmed(tft.color565(radar::kAircraftB, radar::kAircraftG,
+                            radar::kAircraftR));
   } else {
     radar::kColorAircraft =
-        tft.color565(radar::kAircraftR, radar::kAircraftG, radar::kAircraftB);
+        dimmed(tft.color565(radar::kAircraftR, radar::kAircraftG,
+                            radar::kAircraftB));
   }
   radar::kColorTrackVector =
-      tft.color565(radar::kTrackR, radar::kTrackG, radar::kTrackB);
+      dimmed(tft.color565(radar::kTrackR, radar::kTrackG, radar::kTrackB));
   radar::kColorTagType =
-      tft.color565(radar::kTagTypeR, radar::kTagTypeG, radar::kTagTypeB);
+      dimmed(tft.color565(radar::kTagTypeR, radar::kTagTypeG, radar::kTagTypeB));
   radar::kColorTagAltitude =
-      tft.color565(radar::kTagAltR, radar::kTagAltG, radar::kTagAltB);
+      dimmed(tft.color565(radar::kTagAltR, radar::kTagAltG, radar::kTagAltB));
   radar::kColorRunway =
-      tft.color565(radar::kRunwayR, radar::kRunwayG, radar::kRunwayB);
-  radar::kColorRunwayLabel = tft.color565(radar::kRunwayLabelR, radar::kRunwayLabelG,
-                                          radar::kRunwayLabelB);
+      dimmed(tft.color565(radar::kRunwayR, radar::kRunwayG, radar::kRunwayB));
+  radar::kColorRunwayLabel =
+      dimmed(tft.color565(radar::kRunwayLabelR, radar::kRunwayLabelG,
+                          radar::kRunwayLabelB));
   radar::kColorFooterBackground =
-      tft.color565(radar::kFooterBgR, radar::kFooterBgG, radar::kFooterBgB);
+      dimmed(tft.color565(radar::kFooterBgR, radar::kFooterBgG,
+                          radar::kFooterBgB));
 }
 
 constexpr float kKmPerDeg = 111.0f;

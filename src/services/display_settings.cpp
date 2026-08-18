@@ -17,6 +17,8 @@ constexpr char kKeyWeather[] = "weather";
 constexpr char kKeyFahrenheit[] = "tempF";
 constexpr char kKeyClock24[] = "time24";
 constexpr char kKeyTextScale[] = "fontPct";
+constexpr char kKeyNightDim[] = "nightDim";
+constexpr char kKeyNightBrightness[] = "nightPct";
 constexpr char kKeyOtaPassword[] = "otaPass";
 
 char s_ota_password[kOtaPasswordMaxLen + 1] = {};
@@ -25,6 +27,8 @@ bool s_weather_enabled = true;
 bool s_temperature_fahrenheit = false;
 bool s_use_24_hour_clock = true;
 int s_text_scale_percent = kTextScaleDefaultPercent;
+bool s_night_dim_enabled = true;
+int s_night_brightness_percent = kNightBrightnessDefaultPercent;
 
 bool checkboxChecked(const char* value) {
   if (value == nullptr || value[0] == '\0') {
@@ -76,7 +80,18 @@ int clampTextScalePercent(int value) {
   return value;
 }
 
-bool parseTextScalePercent(const char* value, int* result) {
+int clampNightBrightnessPercent(int value) {
+  if (value < kNightBrightnessMinPercent) {
+    return kNightBrightnessMinPercent;
+  }
+  if (value > kNightBrightnessMaxPercent) {
+    return kNightBrightnessMaxPercent;
+  }
+  return value;
+}
+
+bool parsePercentValue(const char* value, int min_value, int max_value,
+                       int* result) {
   if (value == nullptr || value[0] == '\0' || result == nullptr) {
     return false;
   }
@@ -93,7 +108,13 @@ bool parseTextScalePercent(const char* value, int* result) {
     return false;
   }
 
-  *result = clampTextScalePercent(static_cast<int>(parsed));
+  if (parsed < min_value) {
+    *result = min_value;
+  } else if (parsed > max_value) {
+    *result = max_value;
+  } else {
+    *result = static_cast<int>(parsed);
+  }
   return true;
 }
 
@@ -105,6 +126,8 @@ void loadDefaults() {
   s_temperature_fahrenheit = false;
   s_use_24_hour_clock = true;
   s_text_scale_percent = kTextScaleDefaultPercent;
+  s_night_dim_enabled = true;
+  s_night_brightness_percent = kNightBrightnessDefaultPercent;
 }
 
 void persist() {
@@ -117,6 +140,8 @@ void persist() {
   prefs.putBool(kKeyFahrenheit, s_temperature_fahrenheit);
   prefs.putBool(kKeyClock24, s_use_24_hour_clock);
   prefs.putInt(kKeyTextScale, s_text_scale_percent);
+  prefs.putBool(kKeyNightDim, s_night_dim_enabled);
+  prefs.putInt(kKeyNightBrightness, s_night_brightness_percent);
   prefs.putString(kKeyOtaPassword, s_ota_password);
   prefs.end();
 }
@@ -137,6 +162,9 @@ void init() {
   s_use_24_hour_clock = prefs.getBool(kKeyClock24, true);
   s_text_scale_percent = clampTextScalePercent(
       prefs.getInt(kKeyTextScale, kTextScaleDefaultPercent));
+  s_night_dim_enabled = prefs.getBool(kKeyNightDim, true);
+  s_night_brightness_percent = clampNightBrightnessPercent(
+      prefs.getInt(kKeyNightBrightness, kNightBrightnessDefaultPercent));
 
   String value = prefs.getString(kKeyOtaPassword, config::kDefaultOtaPassword);
   copyCleanText(value.c_str(), s_ota_password, sizeof(s_ota_password));
@@ -157,20 +185,36 @@ bool use24HourClock() { return s_use_24_hour_clock; }
 
 int textScalePercent() { return s_text_scale_percent; }
 
+bool nightDimEnabled() { return s_night_dim_enabled; }
+
+int nightBrightnessPercent() { return s_night_brightness_percent; }
+
 const char* otaPassword() { return s_ota_password; }
 
 void saveFromPortal(const char* footer_checkbox, const char* weather_checkbox,
                     const char* fahrenheit_checkbox,
                     const char* clock24_checkbox,
                     const char* text_scale_percent_value,
-                    const char* ota_password_value) {
+                    const char* ota_password_value,
+                    const char* night_dim_checkbox,
+                    const char* night_brightness_percent_value) {
   s_footer_enabled = checkboxChecked(footer_checkbox);
   s_weather_enabled = checkboxChecked(weather_checkbox);
   s_temperature_fahrenheit = checkboxChecked(fahrenheit_checkbox);
   s_use_24_hour_clock = checkboxChecked(clock24_checkbox);
   int text_scale_percent = s_text_scale_percent;
-  if (parseTextScalePercent(text_scale_percent_value, &text_scale_percent)) {
+  if (parsePercentValue(text_scale_percent_value, kTextScaleMinPercent,
+                        kTextScaleMaxPercent, &text_scale_percent)) {
     s_text_scale_percent = text_scale_percent;
+  }
+  if (night_dim_checkbox != nullptr) {
+    s_night_dim_enabled = checkboxChecked(night_dim_checkbox);
+  }
+  int night_brightness = s_night_brightness_percent;
+  if (parsePercentValue(night_brightness_percent_value,
+                        kNightBrightnessMinPercent,
+                        kNightBrightnessMaxPercent, &night_brightness)) {
+    s_night_brightness_percent = night_brightness;
   }
 
   char password[kOtaPasswordMaxLen + 1] = {};

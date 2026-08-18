@@ -202,6 +202,17 @@ void formatWeatherLine(char* out, size_t out_len) {
            lroundf(temperature), unit, s_humidity_percent);
 }
 
+int localHour() {
+  const time_t utc_now = time(nullptr);
+  if (utc_now < kMinimumValidEpoch) {
+    return -1;
+  }
+  const time_t local_now = utc_now + s_utc_offset_seconds;
+  tm local = {};
+  gmtime_r(&local_now, &local);
+  return local.tm_hour;
+}
+
 void formatDateTimeLine(char* out, size_t out_len) {
   if (out_len == 0) {
     return;

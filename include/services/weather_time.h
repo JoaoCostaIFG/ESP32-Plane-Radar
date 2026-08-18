@@ -19,5 +19,7 @@ bool refreshIfDue(double latitude, double longitude, bool force = false);
 bool valid();
 void formatWeatherLine(char* out, size_t out_len);
 void formatDateTimeLine(char* out, size_t out_len);
+/** Current local hour 0-23, or -1 while the clock is unsynchronized. */
+int localHour();
 
 }  // namespace services::weather
