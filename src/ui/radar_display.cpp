@@ -402,10 +402,31 @@ void drawSpeedVector(int cx, int cy, float heading_deg, float track_deg,
 void applyTagStyle() {
   if (s_tag_use_vlw) {
     displayFontSetSmoothSize(*s_draw,
-                             s_tag_vlw_size * configuredTextScale());
+                              s_tag_vlw_size * configuredTextScale());
   } else {
     displayFontSetBitmap(*s_draw, s_tag_gfx);
     applyBitmapTextScale(*s_draw);
+  }
+}
+
+/** Below this vertical rate (ft/min) the aircraft counts as level. */
+constexpr int kTrendArrowThresholdFpm = 200;
+/** Horizontal room reserved for the arrow next to the altitude line. */
+constexpr int kTrendArrowSpacePx = 10;
+
+bool trendArrowShown(const services::adsb::Aircraft& plane) {
+  return std::abs(plane.baro_rate_fpm) >= kTrendArrowThresholdFpm;
+}
+
+void drawTrendArrow(int x, int y_mid, bool climbing, uint16_t color) {
+  constexpr int kHalfW = 3;
+  constexpr int kHalfH = 4;
+  if (climbing) {
+    s_draw->fillTriangle(x, y_mid - kHalfH, x - kHalfW, y_mid + kHalfH,
+                         x + kHalfW, y_mid + kHalfH, color);
+  } else {
+    s_draw->fillTriangle(x, y_mid + kHalfH, x - kHalfW, y_mid - kHalfH,
+                         x + kHalfW, y_mid - kHalfH, color);
   }
 }
 
@@ -431,6 +452,9 @@ int measureTagBlockWidth(const services::adsb::Aircraft& plane) {
     if (w > max_w) {
       max_w = w;
     }
+  }
+  if (trendArrowShown(plane)) {
+    max_w += kTrendArrowSpacePx;
   }
   return max_w;
 }
@@ -477,6 +501,13 @@ void drawAircraftTag(int x, int y, const services::adsb::Aircraft& plane) {
   if (plane.alt[0] != '\0') {
     s_draw->setTextColor(radar::kColorTagAltitude, radar::kColorBackground);
     s_draw->drawString(plane.alt, anchor_x, ly);
+    if (trendArrowShown(plane)) {
+      const int text_w = s_draw->textWidth(plane.alt);
+      const int arrow_x =
+          tag_on_right ? anchor_x + text_w + 5 : anchor_x - text_w - 5;
+      drawTrendArrow(arrow_x, ly + line_h / 2, plane.baro_rate_fpm > 0,
+                     radar::kColorTagAltitude);
+    }
   }
 }
 

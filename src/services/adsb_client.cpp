@@ -219,6 +219,12 @@ void fillTagFields(Aircraft* ac, const JsonObject& plane) {
   ac->route[0] = '\0';
   copyJsonStringTrimmed(plane, "t", ac->type, sizeof(ac->type));
   formatAltitudeTag(plane, ac->alt, sizeof(ac->alt));
+  float baro_rate = 0.0f;
+  if (readJsonFloat(plane, "baro_rate", &baro_rate)) {
+    ac->baro_rate_fpm = static_cast<int>(lroundf(baro_rate));
+  } else {
+    ac->baro_rate_fpm = 0;
+  }
 }
 
 bool sameKey(const EnrichmentCacheEntry& entry, const Aircraft& plane) {

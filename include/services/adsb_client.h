@@ -17,6 +17,8 @@ struct Aircraft {
   /** Compact detailed model, for example "B737-800". */
   char type[18];
   char alt[12];
+  /** Barometric vertical rate in ft/min (0 when unavailable). */
+  int baro_rate_fpm;
 };
 
 constexpr size_t kMaxAircraft = 64;
