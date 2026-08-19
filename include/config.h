@@ -30,12 +30,30 @@ constexpr unsigned long kBootResetHoldMs = 3000UL;
 constexpr unsigned long kBootTapMinMs = 40UL;
 
 // --- Display: GC9A01 1.28" round 240×240 (SPI) ---
-// XIAO ESP32-C3: MOSI=D10, SCLK=D8, DC=D1, CS=D4, RST=D3 (D9/MISO unused; BOOT btn)
-constexpr gpio_num_t kDisplayPinRst = GPIO_NUM_5;
-constexpr gpio_num_t kDisplayPinCs = GPIO_NUM_6;
-constexpr gpio_num_t kDisplayPinDc = GPIO_NUM_3;
-constexpr gpio_num_t kDisplayPinMosi = GPIO_NUM_10;  // D10 (MOSI)
-constexpr gpio_num_t kDisplayPinSclk = GPIO_NUM_8;   // D8 (SCK)
+// Defaults are for the ESP32-C3 Super Mini. The Seeed XIAO ESP32-C3 env in
+// platformio.ini overrides these via -DCONFIG_DISPLAY_PIN_* build flags
+// (MOSI=D10, SCLK=D8, DC=D1, CS=D4, RST=D3; D9/MISO unused; BOOT button).
+#ifndef CONFIG_DISPLAY_PIN_RST
+#define CONFIG_DISPLAY_PIN_RST 0
+#endif
+#ifndef CONFIG_DISPLAY_PIN_CS
+#define CONFIG_DISPLAY_PIN_CS 1
+#endif
+#ifndef CONFIG_DISPLAY_PIN_DC
+#define CONFIG_DISPLAY_PIN_DC 10
+#endif
+#ifndef CONFIG_DISPLAY_PIN_MOSI
+#define CONFIG_DISPLAY_PIN_MOSI 3
+#endif
+#ifndef CONFIG_DISPLAY_PIN_SCLK
+#define CONFIG_DISPLAY_PIN_SCLK 4
+#endif
+
+constexpr gpio_num_t kDisplayPinRst = static_cast<gpio_num_t>(CONFIG_DISPLAY_PIN_RST);
+constexpr gpio_num_t kDisplayPinCs = static_cast<gpio_num_t>(CONFIG_DISPLAY_PIN_CS);
+constexpr gpio_num_t kDisplayPinDc = static_cast<gpio_num_t>(CONFIG_DISPLAY_PIN_DC);
+constexpr gpio_num_t kDisplayPinMosi = static_cast<gpio_num_t>(CONFIG_DISPLAY_PIN_MOSI);
+constexpr gpio_num_t kDisplayPinSclk = static_cast<gpio_num_t>(CONFIG_DISPLAY_PIN_SCLK);
 
 constexpr int kDisplayWidth = 240;
 constexpr int kDisplayHeight = 240;
