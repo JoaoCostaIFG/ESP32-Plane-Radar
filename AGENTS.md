@@ -2,18 +2,20 @@
 
 PlatformIO (Arduino, ESP32-C3) firmware. No tests or linters — CI only builds.
 
+This fork focuses on the **Seeed XIAO ESP32-C3** (`xiao` env); `supermini` is kept for the original board.
+
 ## Commands
 
 ```bash
-pio run -e supermini              # build (envs: supermini, xiao)
-pio run -t upload -e supermini    # flash over USB
+pio run -e xiao                  # build the primary target (envs: xiao, supermini)
+pio run -t upload -e xiao        # flash over USB
 pio device monitor                # serial, 115200 baud
-pio run -t merge -e supermini     # merged web-flash bin (.pio/build/supermini/firmware-merged.bin)
+pio run -t merge -e xiao         # merged web-flash bin (.pio/build/xiao/firmware-merged.bin)
 ```
 
 - Prefer `.venv/bin/pio` (repo-local PlatformIO venv) if `pio` is not on PATH.
 - `scripts/merge-firmware.sh [--no-build] [--env NAME]` → `release/plane-radar-merged.bin`.
-- Verify a change by building: `pio run -e supermini` (CI builds this env only).
+- Verify a change by building: `pio run -e xiao`.
 
 ## Regenerated files — do not hand-edit
 

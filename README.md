@@ -1,5 +1,8 @@
 # Plane Radar
 
+> [!NOTE]
+> **This fork adds support for the Seeed XIAO ESP32-C3** (in addition to the original ESP32-C3 Super Mini), with remapped display pins — see [Wiring](#wiring-gc9a01--seeed-xiao-esp32-c3). Build with the `xiao` PlatformIO environment.
+
 <img width="800" height="450" alt="plane-radar" src="https://github.com/user-attachments/assets/716d0992-dab8-47ba-8f1a-2aec7f607419" />
 
 **3D printed case (STL + assembly):** [MakerWorld](https://makerworld.com/en/models/2872376-esp32-plane-radar-live-ads-b-on-a-round-display#profileId-3207083) · **Firmware:** [Releases](../../releases)
@@ -174,7 +177,23 @@ src/
   services/
 ```
 
-## Wiring (GC9A01 ↔ ESP32-C3 Super Mini)
+## Wiring (GC9A01 ↔ Seeed XIAO ESP32-C3)
+
+This fork targets the **XIAO ESP32-C3** (build env `xiao`); its BOOT button (GPIO 9) is built into the board.
+
+| Display | XIAO pin | GPIO |
+|---------|----------|------|
+| VCC | 3V3 | — |
+| GND | GND | — |
+| RST | **D3** | GPIO **5** |
+| CS | **D4** | GPIO **6** |
+| DC | **D1** | GPIO **3** |
+| SDA (MOSI) | **D10** | GPIO **10** |
+| SCL (SCLK) | **D8** | GPIO **8** |
+
+The GPIO0/GPIO1 pins used by the Super Mini mapping are not exposed on the XIAO, hence the remap (`-DCONFIG_DISPLAY_PIN_*` in the `env:xiao` section of `platformio.ini`).
+
+### Original wiring (GC9A01 ↔ ESP32-C3 Super Mini)
 
 | Display | ESP32-C3 |
 |---------|----------|
@@ -190,11 +209,11 @@ src/
 ## Build
 
 ```bash
-pio run -t upload
+pio run -e xiao -t upload
 pio device monitor
 ```
 
-- PlatformIO env: **`supermini`**
+- PlatformIO env: **`xiao`** (XIAO ESP32-C3) or **`supermini`** (ESP32-C3 Super Mini)
 - Serial: **115200** baud
 - USB CDC on boot enabled in `platformio.ini` for the Super Mini
 
